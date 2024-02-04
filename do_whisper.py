@@ -17,7 +17,22 @@ import whisper
 prompt = """Dit is een TV uitzending rond de Tweede Kamerverkiezingen. Lijsttrekkers in deze verkiezingen zijn
 Dilan Yesilgöz voor VVD,
 Rob Jetten voor D66,
-Frans Timmermans voor  GroenLinks-PvdA"""
+Frans Timmermans voor  GroenLinks-PvdA,
+Geert Wilders voor PVV,
+Pieter Omtzigt voor NSC,
+Caroline Van Der Plas voor BBB,
+Henri Bontenbal voor CDA,
+Lilian Marijnissen voor SP,
+Stephan van Baarle voor DENK,
+Esther Ouwehand voor PVDD,
+Thierry Baudet voor FVD,
+Chris Stoffer voor SGP,
+Mirjam Bikker voor CU,
+Laurens Dassen voor VOLT,
+Joost Eerdmans voor JA21,
+Gerard Van Hooft voor 50PLUS,
+Edson Olf voor BIJ1
+"""
 
 WhisperJob = namedtuple("WhisperJob", ["videofile", "segmentfile", "outfile"])
 Segment = namedtuple("Segment", ["start", "stop", "speakernum", "texts"])
@@ -39,6 +54,8 @@ def get_segments(segmentfile):
         else:
             yield current_segment
             current_segment = Segment(float(row["start"]), float(row["stop"]), row["speakernum"], [])
+    if current_segment:
+        yield current_segment
 
 
 def get_text(segment: Segment, texts):
@@ -82,9 +99,7 @@ def do_whisper(whisper: whisper.Whisper, job: WhisperJob):
         logging.info(f"Converting {job.videofile} to {wavfile}")
         get_wav(job.videofile, wavfile)
         logging.info("Whispering...")
-        for text in whisper.transcribe(wavfile, language="nl", word_timestamps=False, initial_prompt=prompt)[
-            "segments"
-        ]:
+        for text in whisper.transcribe(wavfile, language="nl", initial_prompt=prompt)["segments"]:
             segment = guess_segment(text["start"], text["end"], segments)
             if segment:
                 # print(text["text"], "->", segment.start, segment.stop)
