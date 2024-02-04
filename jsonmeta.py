@@ -1,6 +1,7 @@
 from datetime import datetime
 import glob
 import json
+from pathlib import Path
 import re
 
 
@@ -28,8 +29,8 @@ def scrape_files(file):
         return article
 
 
-def get_meta():
-    for f in glob.glob(f"/home/wva/npo2023/meta/*/*.json"):
+def get_meta(folder: Path):
+    for f in folder.glob("**/*.json"):
         art = scrape_files(f)
         if art:
             yield art["won"], art
