@@ -79,7 +79,7 @@ def worker(queue: "Queue[Todo]"):
 
 
 def get_todo(indir: Path, outdir: Path):
-    for f in indir.glob("*.mp4"):
+    for f in indir.glob("*.m4a"):
         outfile = outdir / f.with_suffix(".csv").name
         if not outfile.exists():
             yield Todo(f, outfile)

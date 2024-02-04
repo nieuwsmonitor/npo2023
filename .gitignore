@@ -79,3 +79,4 @@ venv/
 testme.db
 
 /data
+.Rproj.user

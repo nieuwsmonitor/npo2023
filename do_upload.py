@@ -68,6 +68,7 @@ def get_wav(infile, outfile):
 
 
 def get_embedding(wavfile, start, end):
+    torch.cuda.empty_cache()
     embedding, audio = get_model()
     turn = Segment(start, min(duration(wavfile), end))
     emb = embedding(audio.crop(wavfile, turn)[0][None])
@@ -79,10 +80,10 @@ def get_embedding(wavfile, start, end):
 def get_docs(job: UploadJob):
     with TemporaryDirectory() as tmpdir:
 
-        logging.info(f"[{current_process().pid}] Reading segments from {job.segmentfile}")
         wavfile = f"{tmpdir}/tmp.wav"
         logging.info(f"[{current_process().pid}] Converting {job.videofile} to {wavfile}")
         get_wav(job.videofile, wavfile)
+        logging.info(f"[{current_process().pid}] Reading segments from {job.segmentfile}")
         segments = list(csv.DictReader(open(job.segmentfile)))
         logging.info(f"[{current_process().pid}] Getting embeddings for {len(segments)} segments from {job.videofile}")
         for i, row in enumerate(segments):
@@ -139,7 +140,7 @@ def get_todo(amcat: AmcatClient, index: str, metafolder: Path, videofolder: Path
         segmentfile = segmentfolder / f.with_suffix(".csv").name
         if not segmentfile.exists():
             logging.warning(f"No segmentfile for {f}")
-            break
+            continue
         if won not in metadict:
             raise Exception(f"Uknown won {won}")
         yield UploadJob(f, segmentfile, metadict[won])
@@ -153,18 +154,22 @@ if __name__ == "__main__":
     parser.add_argument("metafolder", type=Path)
     parser.add_argument("infolder", type=Path)
     parser.add_argument("segmentfolder", type=Path)
-    parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--processes", type=int, default=8)
     parser.add_argument("--delete", help="Delete the index before proceeding", action="store_true")
     args = parser.parse_args()
 
     amcat = AmcatClient(args.server)
     setup_amcat(amcat, args.index, args.delete)
 
+    if args.check:
+        for f in get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder):
+            print(f)
+        sys.exit()
+
     q = Queue()
     for i, f in enumerate(get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder)):
         q.put(f)
-        if i > 2:
-            break
     nworkers = min(args.processes, q.qsize())
 
     logging.info(f"[{current_process().pid}] {q.qsize()} files to do, spawning {nworkers} workers")
