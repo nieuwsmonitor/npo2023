@@ -3,6 +3,7 @@ import csv
 import logging
 import os
 import shutil
+import sys
 import time
 from collections import namedtuple
 from multiprocessing import Pool, Queue, current_process, pool
@@ -78,11 +79,15 @@ def worker(queue: "Queue[Todo]"):
             shutil.move(outfile, todo.outfile)
 
 
+VIDEO_SUFFIX = [".mp4", ".m4a"]
+
+
 def get_todo(indir: Path, outdir: Path):
-    for f in indir.glob("*.m4a"):
-        outfile = outdir / f.with_suffix(".csv").name
-        if not outfile.exists():
-            yield Todo(f, outfile)
+    for f in indir.glob("*"):
+        if f.suffix in VIDEO_SUFFIX:
+            outfile = outdir / f.with_suffix(".csv").name
+            if not outfile.exists():
+                yield Todo(f, outfile)
 
 
 if __name__ == "__main__":
@@ -97,8 +102,9 @@ if __name__ == "__main__":
     q = Queue()
     for f in get_todo(args.infolder, args.outfolder):
         q.put(f)
-    logging.info(f"[{current_process().pid}] {q.qsize()} files to do, spawning {args.processes} workers")
-    pool = Pool(args.processes, worker, (q,))
+    nworkers = min(args.processes, q.qsize())
+    logging.info(f"[{current_process().pid}] {q.qsize()} files to do, spawning {nworkers} workers")
+    pool = Pool(nworkers, worker, (q,))
     q.close()
     q.join_thread()
     pool.close()
