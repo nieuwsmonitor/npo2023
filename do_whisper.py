@@ -3,6 +3,7 @@ import csv
 import logging
 import os
 import shutil
+import sys
 import time
 from collections import namedtuple
 from multiprocessing import Pool, Queue, current_process, pool
@@ -157,10 +158,15 @@ if __name__ == "__main__":
     parser.add_argument("videofolder", type=Path)
     parser.add_argument("segmentfolder", type=Path)
     parser.add_argument("outfolder", type=Path)
-    parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument("--processes", type=int, default=1)
     parser.add_argument("--whispermodel", default="large-v2")
+    parser.add_argument("--check", action="store_true")
 
     args = parser.parse_args()
+    if args.check:
+        for f in get_todo(args.videofolder, args.segmentfolder, args.outfolder):
+            print(f.videofile, " + ", f.segmentfile, " -> ", f.outfile)
+        sys.exit()
 
     q = Queue()
     for f in get_todo(args.videofolder, args.segmentfolder, args.outfolder):
