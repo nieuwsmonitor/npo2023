@@ -51,3 +51,30 @@ d |> filter(found == "baarle", found != actual)
 
 
 # 
+
+
+
+f = "WON02442276__faces.csv"
+
+library(tidyverse)
+
+COLS <- cols(
+  won = col_character(),
+  frame = col_double(),
+  person = col_character(),
+  file = col_character(),
+  x = col_double(),
+  y = col_double(),
+  w = col_double(),
+  h = col_number()
+)
+read_faces <- function(f) {
+  read_csv(str_c("data/faces/", f), col_names = names(COLS$cols), skip=1, col_types = COLS)
+}
+
+
+faces <- list.files("data/faces") |>
+  purrr::discard(function(f) file.info(str_c("data/faces/", f))$size == 30) |>
+  purrr::map(read_faces, .progress = T) |> list_rbind()
+
+write_csv(faces, "results/faces.csv")
