@@ -12,18 +12,20 @@ import links_buitenhof
 import links_nieuwsuur
 import links_nosjournaal
 import links_ks
+import links_nos
 
 from lxml import etree
 
 files = dict(
-    eenvandaag=links_eenvandaag.eenvandaag,
-    goedemorgen=links_goedemorgen.goedemorgen,
-    opeen=links_opeen.opeen,
-    buitenhof=links_buitenhof.buitenhof,
-    wnl=links_wnl.wnl,
-    nieuwsuur=links_nieuwsuur.nieuwsuur,
+    # eenvandaag=links_eenvandaag.eenvandaag,
+    # goedemorgen=links_goedemorgen.goedemorgen,
+    # opeen=links_opeen.opeen,
+    # buitenhof=links_buitenhof.buitenhof,
+    # wnl=links_wnl.wnl,
+    # nieuwsuur=links_nieuwsuur.nieuwsuur,
     nosjournaal=links_nosjournaal.nosjournaal,
-    ks=links_ks.ks,
+    # ks=links_ks.ks,
+    # nos=links_nos.nos,
 )
 
 parser = etree.HTMLParser()
@@ -46,7 +48,7 @@ class MyProgressBar:
 
 
 for folder, htmlstrings in files.items():
-    outfolder = Path.cwd() / "data" / folder
+    outfolder = Path.cwd() / "data" / "in_extra2"
     existing = {f.name for f in outfolder.glob("*.mp4")}
     todo, done = set(), set()
     for htmlstring in htmlstrings:
@@ -66,6 +68,7 @@ for folder, htmlstrings in files.items():
         fn = href.split("/")[-1]
         with NamedTemporaryFile(suffix=".mp4", delete=False) as tmpf:
             print(f"[{i+1}/{len(todo)}] {fn} Downloading to {tmpf.name}")
+            print(href)
             urlretrieve(href, tmpf.name, MyProgressBar())
             outf = outfolder / fn
             print(f"[{i+1}/{len(todo)}] {fn} moving {tmpf.name} to {outf}")

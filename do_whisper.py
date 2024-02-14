@@ -136,7 +136,7 @@ def worker(queue: "Queue[WhisperJob]", whisper_model="large-v2"):
 
 
 def get_todo(videofolder: Path, segmentfolder: Path, outfolder: Path):
-    for f in videofolder.glob("*.mp4"):
+    for f in videofolder.glob("*.m4a"):
         outfile = outfolder / f.with_suffix(".csv").name
         if not outfile.exists():
             segmentfile = segmentfolder / f.with_suffix(".csv").name
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("videofolder", type=Path)
     parser.add_argument("segmentfolder", type=Path)
     parser.add_argument("outfolder", type=Path)
-    parser.add_argument("--processes", type=int, default=1)
+    parser.add_argument("--processes", type=int, default=4)
     parser.add_argument("--whispermodel", default="large-v2")
 
     args = parser.parse_args()

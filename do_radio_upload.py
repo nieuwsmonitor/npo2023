@@ -1,4 +1,6 @@
 from multiprocessing import Pool, Queue, current_process
+import os
+import ossaudiodev
 from amcat4py import AmcatClient
 import argparse
 from collections import namedtuple
@@ -15,8 +17,7 @@ import numpy
 from pyannote.audio import Audio
 from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbedding
 import torch
-from jsonmeta import get_meta
-
+from datetime import datetime
 from pyannote.core import Segment
 
 FIELDS = {
@@ -26,8 +27,10 @@ FIELDS = {
     "speakernum": "keyword",
     "embedding": "dense_vector_192",
     "publisher": "keyword",
-    "won": "keyword",
+    "filename": "keyword",
 }
+
+UploadJob = namedtuple("UploadJob", ["audiofile", "segmentfile"])
 
 
 class EmbeddingModel(NamedTuple):
@@ -59,9 +62,6 @@ def setup_amcat(amcat, index, delete=False):
         amcat.set_fields(index, FIELDS)
 
 
-UploadJob = namedtuple("UploadJob", ["videofile", "segmentfile", "meta"])
-
-
 def get_wav(infile, outfile):
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", infile, outfile]
     check_output(cmd)
@@ -81,32 +81,34 @@ def get_docs(job: UploadJob):
     with TemporaryDirectory() as tmpdir:
 
         wavfile = f"{tmpdir}/tmp.wav"
-        logging.info(f"[{current_process().pid}] Converting {job.videofile} to {wavfile}")
-        get_wav(job.videofile, wavfile)
+        logging.info(f"[{current_process().pid}] Converting {job.audiofile} to {wavfile}")
+        get_wav(job.audiofile, wavfile)
         logging.info(f"[{current_process().pid}] Reading segments from {job.segmentfile}")
         segments = list(csv.DictReader(open(job.segmentfile)))
-        logging.info(f"[{current_process().pid}] Getting embeddings for {len(segments)} segments from {job.videofile}")
+        logging.info(f"[{current_process().pid}] Getting embeddings for {len(segments)} segments from {job.audiofile}")
         for i, row in enumerate(segments):
             if i and (not i % 10):
                 pct = i * 100 // len(segments)
                 logging.info(
-                    f"[{current_process().pid}] {job.videofile} [{pct:2}%] Segment {i} / {len(segments)} segments"
+                    f"[{current_process().pid}] {job.audiofile} [{pct:2}%] Segment {i} / {len(segments)} segments"
                 )
 
             doc = dict(
-                publisher=job.meta["name"],
-                date=job.meta["date"],
-                won=job.meta["won"],
                 start=row["start"],
                 end=row["stop"],
                 speakernum=row["speakernum"],
                 text=row["text"],
             )
+            f2 = os.path.split(job.audiofile)[1]
+            doc["title"] = re.split("\.", f2)[0]
+            names = re.match(r"([a-z]+)([0-9]+)", f2, re.I).groups()
+            doc["publisher"] = names[0]
+            doc["date"] = datetime.strptime(names[1], "%Y%m%d")
             emb = get_embedding(wavfile, float(row["start"]), float(row["stop"]))
             if emb:
                 doc["embedding"] = emb
 
-            doc["title"] = f"{doc['publisher']} {doc['date']} segment {doc['start']} - {doc['end']}"
+            # doc["title"] = f"{doc['publisher']} {doc['date']} segment {doc['start']} - {doc['end']}"
             yield doc
 
 
@@ -123,27 +125,31 @@ def worker(queue: "Queue[UploadJob]", server: str, index: str):
         job = queue.get(block=False)
         if job is None:
             break
-        logging.info(f"[{current_process().pid}] Processing {job.videofile} + {job.segmentfile}")
+        logging.info(f"[{current_process().pid}] Processing {job.audiofile} + {job.segmentfile}")
         do_upload(amcat, index, job)
 
 
-def get_todo(amcat: AmcatClient, index: str, metafolder: Path, videofolder: Path, segmentfolder: Path):
-    metadict = dict(get_meta(metafolder))
-    existing_wons = {art.get("won") for art in amcat.query(index, fields=["won"])}
+def get_meta(folder: Path):
+    art = {}
+    for f in folder.glob("*.m4a"):
+        f2 = os.path.split(f)[1]
+        art["title"] = re.split("\.", f2)[0]
+        names = re.match(r"([a-z]+)([0-9]+)", f2, re.I).groups()
+        art["publisher"] = names[0]
+        art["date"] = datetime.strptime(names[1], "%Y%m%d")
+    return art
 
-    for f in videofolder.glob("*.m4a"):
-        if not (m := re.search("-((WON|INC|BV_|INC)[A-Z0-9]+)\\_", f.name)):
-            raise Exception(f"Cannot parse {f}")
-        won = m.group(1)
-        if won in existing_wons:
+
+def get_todo(amcat: AmcatClient, index: str, audiofolder: Path, segmentfolder: Path):
+    existing_fns = {art.get("filename") for art in amcat.query(index, fields=["filename"])}
+    for f in audiofolder.glob("*.m4a"):
+        if f.name in existing_fns:
             continue
         segmentfile = segmentfolder / f.with_suffix(".csv").name
         if not segmentfile.exists():
             logging.warning(f"No segmentfile for {f}")
             continue
-        if won not in metadict:
-            raise Exception(f"Uknown won {won}")
-        yield UploadJob(f, segmentfile, metadict[won])
+        yield UploadJob(f, segmentfile)
 
 
 if __name__ == "__main__":
@@ -151,11 +157,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("server")
     parser.add_argument("index")
-    parser.add_argument("metafolder", type=Path)
     parser.add_argument("infolder", type=Path)
     parser.add_argument("segmentfolder", type=Path)
     parser.add_argument("--check", action="store_true")
-    parser.add_argument("--processes", type=int, default=8)
+    parser.add_argument("--processes", type=int, default=4)
     parser.add_argument("--delete", help="Delete the index before proceeding", action="store_true")
     args = parser.parse_args()
 
@@ -163,12 +168,12 @@ if __name__ == "__main__":
     setup_amcat(amcat, args.index, args.delete)
 
     if args.check:
-        for f in get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder):
+        for f in get_todo(amcat, args.index, args.infolder, args.segmentfolder):
             print(f)
         sys.exit()
 
     q = Queue()
-    for i, f in enumerate(get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder)):
+    for i, f in enumerate(get_todo(amcat, args.index, args.infolder, args.segmentfolder)):
         q.put(f)
     nworkers = min(args.processes, q.qsize())
 
