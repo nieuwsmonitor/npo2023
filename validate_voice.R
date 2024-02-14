@@ -1,5 +1,5 @@
 library(tidyverse)
-d = read_csv("/tmp/bla5.csv")
+d = read_csv("results/validatie_voices.csv")
 table(d$spreker, d$majority_speaker, useNA = "a")
 table(d$spreker == d$majority_speaker, useNA = "a")
 
@@ -8,7 +8,6 @@ d |>
   mutate(haspol=spreker != "", 
             goed = spreker == majority_speaker) |>
   group_by(spreker) |> summarize(acc=mean(goed)) |> 
-  left_join(nwons) |>
   View()
 
 

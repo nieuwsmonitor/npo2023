@@ -1,9 +1,8 @@
 library(tidyverse)
+library(amcat4r)
 
 
-
-
-d = read_csv("voices2.csv")|>
+d = read_csv("results/tv_voices.csv")
   
 
 tijd_per_won = d|>
@@ -13,12 +12,9 @@ tijd_per_won = d|>
   mutate(tijd=end-start)|>
   select(won, tijd)
 
-amcat4r::amcat_login("https://amcat4.labs.vu.nl/amcat")
-meta=amcat4r::query_documents("tk2023_radio_tv",
-                              fields = c('_id', 'won', 'publisher'),
-                              max_pages = Inf, scroll='5m')
+meta = read_csv("results/tv_amcat.csv") |> select(.id, won, date, publisher)
 
-
+(meta$publisher)
 check = d|>
   filter(won=="WON02443345")
 
@@ -90,4 +86,9 @@ d|>
   summarise(spreektijd=sum(spreektijd))|>
   mutate(perc=spreektijd/sum(spreektijd)*100)|>
   arrange(-perc)
+
+
+################## RADIO #########################
+
+
 

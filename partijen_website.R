@@ -8,17 +8,6 @@ library(sotu)
 library(tidytext)
 
 
-sotu_texts = add_column(sotu_meta, text=sotu_text) |> 
-  as_tibble() 
-
-sotu_texts=sotu_texts|>
-  filter(date=="2001-02-27")
-
-head(sotu_texts)
-
-sotu_tokens = sotu_texts |> unnest_tokens(word, text)
-head(sotu_tokens)
-
 conn = amcat.connect("https://vu.amcat.nl")
 data = amcat.getarticlemeta(conn=conn, project = 65, articleset = 7805, columns = c("title", "publisher","date", "text"), dateparts = T)
 data = data|>
@@ -26,11 +15,13 @@ data = data|>
          title = tolower(title))|>
   mutate(text=paste(title,text))
 
+write_csv(data, "results/websites_amcat.csv")
 
 head(data)
 
 googlesheets4::gs4_deauth()
 partijen <- read_sheet('https://docs.google.com/spreadsheets/d/1d3G1_y_HJP2Ik1v7rKrxeAXL4uCt5mLNgc8uC7vzQyI/edit#gid=0', sheet = 1)
+write_csv(partijen, "results/party_queries.csv")
 
 tokens = data |>unnest_tokens(word, text)
 head(tokens)
