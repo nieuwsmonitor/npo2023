@@ -138,7 +138,7 @@ if __name__ == "__main__":
         for doc in docs:
             w.writerow(
                 [
-                    doc["won"],
+                    won,
                     doc["speakernum"],
                     doc["start"],
                     doc["end"],
