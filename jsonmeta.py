@@ -34,3 +34,12 @@ def get_meta(folder: Path):
         art = scrape_files(f)
         if art:
             yield art["won"], art
+
+if __name__ == '__main__':
+    import sys
+    meta = get_meta(Path(sys.argv[1]))
+    import csv
+    w = csv.writer(sys.stdout)
+    w.writerow(["won", "name", "date"])
+    for won, art in meta:
+        w.writerow([won, art["name"], art["date"]])
