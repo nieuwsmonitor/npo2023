@@ -10,7 +10,7 @@ import links_opeen
 import links_wnl
 import links_buitenhof
 import links_nieuwsuur
-import links_nosjournaal
+import links_nosjournaal2
 import links_ks
 import links_nos
 
@@ -23,7 +23,7 @@ files = dict(
     # buitenhof=links_buitenhof.buitenhof,
     # wnl=links_wnl.wnl,
     # nieuwsuur=links_nieuwsuur.nieuwsuur,
-    nosjournaal=links_nosjournaal.nosjournaal,
+    nosjournaal2=links_nosjournaal2.nosjournaal2,
     # ks=links_ks.ks,
     # nos=links_nos.nos,
 )

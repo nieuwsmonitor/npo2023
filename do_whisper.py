@@ -137,7 +137,7 @@ def worker(queue: "Queue[WhisperJob]", whisper_model="large-v2"):
 
 
 def get_todo(videofolder: Path, segmentfolder: Path, outfolder: Path):
-    for f in videofolder.glob("*.m4a"):
+    for f in videofolder.glob("*.mp4"):
         outfile = outfolder / f.with_suffix(".csv").name
         if not outfile.exists():
             segmentfile = segmentfolder / f.with_suffix(".csv").name

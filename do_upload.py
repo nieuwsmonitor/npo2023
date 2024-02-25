@@ -131,7 +131,7 @@ def get_todo(amcat: AmcatClient, index: str, metafolder: Path, videofolder: Path
     metadict = dict(get_meta(metafolder))
     existing_wons = {art.get("won") for art in amcat.query(index, fields=["won"])}
 
-    for f in videofolder.glob("*.m4a"):
+    for f in videofolder.glob("*.mp4"):
         if not (m := re.search("-((WON|INC|BV_|INC)[A-Z0-9]+)\\_", f.name)):
             raise Exception(f"Cannot parse {f}")
         won = m.group(1)
