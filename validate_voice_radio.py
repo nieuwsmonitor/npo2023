@@ -106,8 +106,11 @@ if __name__ == "__main__":
     if titles2 - titles:
         raise Exception(f"Title problem: {titles2-titles}")
 
+    docs2 = []
     for doc in docs:
-        doc['spreker'] = speakers[doc['title'], doc['speakernum']]
+        doc['spreker'] = speakers.get((doc['title'], doc['speakernum']))
+        if doc['spreker']:
+            docs2.append(doc)
 
     w = csv.writer(sys.stdout)
     w.writerow(
@@ -127,7 +130,7 @@ if __name__ == "__main__":
 
     for title in titles:
         logging.info(f"Validating {title}")
-        turns = sorted(validate(docs, target=title), key=lambda doc: doc["start"])
+        turns = sorted(validate(docs2, target=title), key=lambda doc: doc["start"])
         for doc in turns:
             w.writerow(
                 [
