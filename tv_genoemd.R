@@ -53,10 +53,14 @@ hits2 = hits|>
   
 head(hits2)
 ggplot(hits2, aes(x=perc, y=name, fill=name)) + geom_col()+
+  geom_text(aes(label=perc))
   facet_grid(~publisher)
 
+library(ggthemes)
+ggplot(hits2, aes(x=perc, y=reorder(name, perc), fill=name)) + geom_col()+
+  geom_text(aes(label=round(perc,1)),vjust=1,hjust=1)
 
-
+ggtheme
 
 
 
