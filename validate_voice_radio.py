@@ -49,7 +49,7 @@ def get_reference_matrix(docs):
     return orderedNames, ref_matrix
 
 
-def guess_speaker(docs, reference_matrix, names, threshold=0.7):
+def guess_speaker(docs, reference_matrix, names, threshold=0.8):
     tree = cKDTree(reference_matrix)
     votes = collections.Counter()
     for doc in docs:
