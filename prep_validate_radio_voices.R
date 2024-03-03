@@ -41,7 +41,8 @@ speakers = c |> unique() |> mutate(order=if_else(is.na(speaker), 3, if_else(spea
   mutate(speaker=if_else(speaker %in% c("olf", "vanhaga"), "n", speaker)) |>
   replace_na(list(speaker="n"))
 
-write_csv(speakers, "results/radio_speakers.csv")
+speakers |> filter(speaker != "d") |>
+  write_csv("results/radio_speakers.csv")
 table(speakers$speaker, useNA="a")
 
 speakers |> group_by(speaker) |> summarize(npub = length(unique(pub))) |> arrange(-npub)
