@@ -20,7 +20,18 @@ c = bind_rows(nc, wc) |>
   ))
 table(c$speaker)
 
-c |> filter(!is.na(speaker)) |> unique() |> group_by(pub, speakernum) |> filter(n() > 1) |> arrange(pub, speakernum)
+c <- c |> mutate(speaker=case_when(
+  pub == "journaal2023-11-11" & speakernum == "SPEAKER_40" ~ "yesilgoz",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_12" ~ "yesilgoz",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_13" ~ "n",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_28" ~ "jetten",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_29" ~ "n",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_31" ~ "bontenbal",
+  pub == "nieuwsenco2023-11-03" & speakernum == "SPEAKER_47" ~ "bikker",
+  pub == "sven2023-11-06" & speakernum == "SPEAKER_13" ~ "dassen",
+  T ~ speaker
+  
+))
 
 c |> filter(!is.na(speaker)) |> unique() |> mutate(order=if_else(speaker == "n", 2, 1)) |> 
   group_by(coder, pub, speakernum) |> filter(n()>1) |> arrange(coder, pub, speakernum, order)
@@ -32,3 +43,5 @@ speakers = c |> unique() |> mutate(order=if_else(is.na(speaker), 3, if_else(spea
 
 write_csv(speakers, "results/radio_speakers.csv")
 table(speakers$speaker, useNA="a")
+
+speakers |> group_by(speaker) |> summarize(npub = length(unique(pub))) |> arrange(-npub)
