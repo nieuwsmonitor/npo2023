@@ -3,6 +3,7 @@ w = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1u0CyQDNG9
 n = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0")
 
 
+
 wcoded = w |> filter(!is.na(speaker)) |> pull(pub) |> unique() |> setdiff("nieuwsenco2023-11-03")
 wc = w |> filter(pub %in% wcoded) |> select(pub, speakernum, speaker) |> add_column(coder="w")
 
@@ -39,10 +40,41 @@ c |> filter(!is.na(speaker)) |> unique() |> mutate(order=if_else(speaker == "n",
 speakers = c |> unique() |> mutate(order=if_else(is.na(speaker), 3, if_else(speaker == "n", 2, 1))) |> 
   group_by(coder, pub, speakernum) |> slice_min(order_by=order, n=1) |>
   mutate(speaker=if_else(speaker %in% c("olf", "vanhaga"), "n", speaker)) |>
-  replace_na(list(speaker="n"))
+  replace_na(list(speaker="n"))|> 
+  filter(speaker != "d")
 
-speakers |> filter(speaker != "d") |>
+speakers  |>
   write_csv("results/radio_speakers.csv")
 table(speakers$speaker, useNA="a")
 
 speakers |> group_by(speaker) |> summarize(npub = length(unique(pub))) |> arrange(-npub)
+
+# extra coderingen, deze alleen als expliciet gecodeerd
+
+n2 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet2") |>
+  rename(speaker=politici)
+n3 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet3") |>
+  rename(speaker=politicus)
+
+e = bind_rows(n2, n3) |>
+  mutate(speaker=case_when(
+    pub == "sven2023-11-08" & speakernum == "SPEAKER_03" ~ "n",
+    pub == "sven2023-11-08" & speakernum == "SPEAKER_04" ~ "eerdmans",
+    speaker=="baarle" ~ "vanbaarle", 
+    T ~ speaker)) |>
+  filter(speaker != "d", !is.na(speaker))
+
+speaker2 = e |> select(pub, speakernum, speaker) |>
+  unique()
+
+speaker2 |>
+  group_by(pub, speakernum) |>
+  filter(n() > 1)
+
+bind_rows(speakers, speaker2) |>
+  group_by(speaker) |> 
+  write_csv("results/radio_speakers.csv")
+
+  summarize(npub = length(unique(pub)))
+
+table(speaker2$speaker)
