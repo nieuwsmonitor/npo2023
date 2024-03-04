@@ -16,7 +16,7 @@ from sklearn.neighbors import KDTree
 from torch import embedding
 
 
-def get_articles(src_api, src_index, titles):
+def get_articles(src_api, src_index, titles=None):
     filters = {"title": titles} if titles else None
     articles = src_api.query(
         src_index,
