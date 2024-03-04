@@ -74,7 +74,7 @@ def guess_speaker(docs, reference_matrix, names, threshold=0.7):
     return spreker, conf
 
 
-def get_reference_matrix_from_amcat(amcat):
+def get_reference_matrix_from_amcat(amcat, index):
     inf = csv.DictReader(open("results/radio_speakers.csv"))
     speakers = {(r["pub"].replace("-", ""), r["speakernum"]) : r["speaker"] for r in inf}
     titles = set(title for (title, _speakernum) in speakers)
@@ -84,7 +84,7 @@ def get_reference_matrix_from_amcat(amcat):
     amcat.login()
 
     logging.info(f"Retrieving {len(titles)} articles from AmCAT")
-    docs = get_articles(amcat, args.source_index, titles)
+    docs = get_articles(amcat, index, titles)
     titles2 = set(doc['title'] for doc in docs)
     if titles2 - titles:
         raise Exception(f"Title problem: {titles2-titles}")
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     amcat = AmcatClient(args.source_url)
     amcat.login()
 
-    names, m = get_reference_matrix_from_amcat(amcat)
+    names, m = get_reference_matrix_from_amcat(amcat, args.index)
     turns = collections.defaultdict(list)
     for d in get_articles(amcat, args.index, wons=[args.won] if args.won else None):
         won = d["title"]
