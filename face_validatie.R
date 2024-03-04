@@ -23,11 +23,20 @@ d <- read_csv("results/validatie_faces.csv") |>
 
 mean(d$actual == d$found)
 
-d |> group_by(actual) |> summarize(
-  accuracy=mean(actual == found),
-  n=n(),
-  nwon=length(unique(test_won))
-) |> arrange(accuracy) 
+total = d |> #group_by(actual) |> 
+  summarize(
+    accuracy=mean(actual == found),
+    n=n(),
+    nwon=length(unique(test_won))
+  ) |> add_column(actual="total", .before=0)
+
+d |> group_by(actual) |> 
+  summarize(
+    accuracy=mean(actual == found),
+    n=n(),
+    nwon=length(unique(test_won))
+) |> bind_rows(total) |> arrange(-n) |> select(actual, nwon, n, accuracy) |> 
+  write_csv("/tmp/bla.csv")
 
 library(tidyverse)
 
@@ -59,12 +68,12 @@ COLS <- cols(
   h = col_number()
 )
 read_faces <- function(f) {
-  read_csv(str_c("data/faces/", f), col_names = names(COLS$cols), skip=1, col_types = COLS)
+  read_csv(str_c("data/faces_missing/", f), col_names = names(COLS$cols), skip=1, col_types = COLS)
 }
 
 
-faces <- list.files("data/faces") |>
-  purrr::discard(function(f) file.info(str_c("data/faces/", f))$size == 30) |>
+faces <- list.files("data/faces_missing/") |>
+  purrr::discard(function(f) file.info(str_c("data/faces_missing/", f))$size == 30) |>
   purrr::map(read_faces, .progress = T) |> list_rbind()
 
-write_csv(faces, "results/faces.csv")
+write_csv(faces, "results/faces_missing.csv")
