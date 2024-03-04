@@ -16,8 +16,8 @@ from sklearn.neighbors import KDTree
 from torch import embedding
 
 
-def get_articles(src_api, src_index, wons):
-    filters = {"won": wons} if wons else None
+def get_articles(src_api, src_index, titles):
+    filters = {"title": titles} if titles else None
     articles = src_api.query(
         src_index,
         fields=(
@@ -26,7 +26,6 @@ def get_articles(src_api, src_index, wons):
             "publisher",
             "date",
             "text",
-            "spreker",
             "start",
             "end",
             "title",
@@ -75,15 +74,30 @@ def guess_speaker(docs, reference_matrix, names, threshold=0.7):
     return spreker, conf
 
 
-def get_reference_matrix_from_amcat(amcat, index):
-    sheet_id = "10qSZponLZ06Rv5KOq83pn7vUpV4Fh5LdVlxhF9t6rgE"
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet=Sprekers"
-    d = pd.read_csv(url)
-    wons = set(d.won)
-    logging.info(f"Retrieving {len(wons)} reference articles from AmCAT")
-    ref_docs = get_articles(amcat, index, wons)
-    names, m = get_reference_matrix(ref_docs)
-    return wons, names, m
+def get_reference_matrix_from_amcat(amcat):
+    inf = csv.DictReader(open("results/radio_speakers.csv"))
+    speakers = {(r["pub"].replace("-", ""), r["speakernum"]) : r["speaker"] for r in inf}
+    titles = set(title for (title, _speakernum) in speakers)
+
+    logging.info(f"Connecting to AmCAT {args.source_url}")
+    amcat = AmcatClient(args.source_url)
+    amcat.login()
+
+    logging.info(f"Retrieving {len(titles)} articles from AmCAT")
+    docs = get_articles(amcat, args.source_index, titles)
+    titles2 = set(doc['title'] for doc in docs)
+    if titles2 - titles:
+        raise Exception(f"Title problem: {titles2-titles}")
+
+    docs2 = []
+    for doc in docs:
+        doc['spreker'] = speakers.get((doc['title'], doc['speakernum']))
+        if doc['spreker']:
+            docs2.append(doc)
+
+
+    names, m = get_reference_matrix(docs2)
+    return names, m
 
 
 def predict(docs, names, m):
@@ -107,7 +121,7 @@ if __name__ == "__main__":
     amcat = AmcatClient(args.source_url)
     amcat.login()
 
-    ref_wons, names, m = get_reference_matrix_from_amcat(amcat, "tk2023_radio_tv")
+    names, m = get_reference_matrix_from_amcat(amcat)
     turns = collections.defaultdict(list)
     for d in get_articles(amcat, args.index, wons=[args.won] if args.won else None):
         won = d["title"]

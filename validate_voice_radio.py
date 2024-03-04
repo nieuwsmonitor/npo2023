@@ -92,7 +92,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inf = csv.DictReader(open("results/radio_speakers.csv"))
-
     speakers = {(r["pub"].replace("-", ""), r["speakernum"]) : r["speaker"] for r in inf}
     titles = set(title for (title, _speakernum) in speakers)
 
