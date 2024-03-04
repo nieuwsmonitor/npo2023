@@ -79,10 +79,6 @@ def get_reference_matrix_from_amcat(amcat, index):
     speakers = {(r["pub"].replace("-", ""), r["speakernum"]) : r["speaker"] for r in inf}
     titles = set(title for (title, _speakernum) in speakers)
 
-    logging.info(f"Connecting to AmCAT {args.source_url}")
-    amcat = AmcatClient(args.source_url)
-    amcat.login()
-
     logging.info(f"Retrieving {len(titles)} articles from AmCAT")
     docs = get_articles(amcat, index, titles)
     titles2 = set(doc['title'] for doc in docs)
@@ -114,7 +110,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(epilog=__doc__)
     parser.add_argument("source_url", help='URL of the source (e.g. "http://localhost/amcat")')
     parser.add_argument("index", help="index in the source")
-    parser.add_argument("--won", type=str, help="Scrape single won")
 
     args = parser.parse_args()
     logging.info(f"Connecting to AmCAT {args.source_url}")
@@ -123,7 +118,7 @@ if __name__ == "__main__":
 
     names, m = get_reference_matrix_from_amcat(amcat, args.index)
     turns = collections.defaultdict(list)
-    for d in get_articles(amcat, args.index, wons=[args.won] if args.won else None):
+    for d in get_articles(amcat, args.index):
         won = d["title"]
         speakernum = d["speakernum"]
         turns[won, speakernum].append(d)
