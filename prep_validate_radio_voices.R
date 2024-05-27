@@ -52,15 +52,30 @@ speakers |> group_by(speaker) |> summarize(npub = length(unique(pub))) |> arrang
 # extra coderingen, deze alleen als expliciet gecodeerd
 
 n2 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet2") |>
-  rename(speaker=politici)
+  select(pub, speakernum, speaker=politici)
 n3 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet3") |>
-  rename(speaker=politicus)
+  select(pub, speakernum, speaker=politicus)
+n4 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet4") |>
+  select(pub, speakernum, speaker=politicus)
+n5 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet5") |>
+  select(pub, speakernum, speaker=politicus)
+n6 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet6") |>
+  select(pub, speakernum, speaker=politicus)
+n7 = googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/18VUMsQKoyZbH8VHZET82-Mfr_L38wU862JbcWpp7my0/edit#gid=0", sheet = "Sheet7") |>
+  select(pub, speakernum, speaker=politici)
 
-e = bind_rows(n2, n3) |>
+
+
+n2 |> filter(speaker == "baudet")
+n4 |> filter(speaker == "baudet")
+
+e = bind_rows(n2, n3, n4, n5, n6, n7) |>
   mutate(speaker=case_when(
     pub == "sven2023-11-08" & speakernum == "SPEAKER_03" ~ "n",
     pub == "sven2023-11-08" & speakernum == "SPEAKER_04" ~ "eerdmans",
+    pub == "journaal2023-11-08" & speakernum == "SPEAKER_126" ~ "n",
     speaker=="baarle" ~ "vanbaarle", 
+    speaker=="bontentbal" ~ "bontenbal",
     T ~ speaker)) |>
   filter(speaker != "d", !is.na(speaker))
 
@@ -75,6 +90,15 @@ bind_rows(speakers, speaker2) |>
   group_by(speaker) |> 
   write_csv("results/radio_speakers.csv")
 
+bind_rows(speakers, speaker2) |>
+  group_by(speaker) |>
   summarize(npub = length(unique(pub)))
 
 table(speaker2$speaker)
+
+
+bind_rows(speakers, speaker2) |>
+  group_by(pub) |> 
+  summarize(n=n()) |> 
+  View()
+  

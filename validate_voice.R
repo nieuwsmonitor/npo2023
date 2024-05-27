@@ -36,3 +36,11 @@ d |>
 
 
 nwons = d |> group_by(spreker) |> summarize(nwon = length(unique(won)))
+
+
+
+v = read_csv("results/voices_radio.csv")
+v |> mutate(publisher = str_remove_all(won, "2023\\d{4}")) |>
+  filter(publisher == "pointer")
+
+
