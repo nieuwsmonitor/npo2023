@@ -3,7 +3,9 @@ library(amcat4r)
 
 
 d = read_csv("results/tv_voices.csv")
-  
+d  
+
+table(tv2$won %in% d$won)
 
 tijd_per_won = d|>
   group_by(won)|>
@@ -13,19 +15,38 @@ tijd_per_won = d|>
   select(won, tijd)
 
 meta = read_csv("results/tv_amcat.csv") |> select(.id, won, date, publisher)
+meta2=meta|>
+  distinct(won, .keep_all = T)
 
-(meta$publisher)
-check = d|>
-  filter(won=="WON02443345")
+head(d)
 
-d|>
-  filter(! is.na(majority_speaker ))|>
+tijd_per_won=d|>
+  group_by(won,majority_speaker)|>
+  mutate(spreekbeurt=max(end)-min(start))|>
+  group_by(won)
+  
+tijd_per_won
+
+dtot=d|>
+  filter(! is.na(majority_speaker) & majority_speaker != "Edson Olf" & majority_speaker != "Wybren van Haga" )|>
   mutate(spreektijd=end-start)|>
   select(won, majority_speaker, spreektijd)|>
-  group_by(won, majority_speaker)|>
+  group_by(majority_speaker)|>
   summarise(spreektijd=sum(spreektijd))|>
-  left_join(tijd_per_won)|>
-  mutate(perc=spreektijd/tijd*100)
+  mutate(perc=spreektijd/sum(spreektijd)*100)|>
+  arrange(-perc) |> 
+  select(-perc) |>
+  mutate(perc=spreektijd/sum(spreektijd)*100)
+
+
+dtot
+ggplot(dtot, aes(x=perc, y=reorder(majority_speaker,perc), fill=majority_speaker)) + geom_col()+
+  geom_text(data=filter(dtot, perc > 0), aes(x=0, label=round(perc,1)),hjust=-.1)+
+  theme_classic() +theme(legend.position = "")+
+  xlab("Percentage")+
+  ylab("")
+
+
 
 publishers=meta|>
   select(-.id) |>
@@ -38,23 +59,42 @@ publishers=meta|>
                                str_detect(publisher, "EenVandaag") ~ "EenVandaag",
                                T ~ publisher))
 
-table(publishers$publisher)
 
-d3=d|>
-  filter(! is.na(majority_speaker))|>
+mutate(publisher2= case_when(str_detect(publisher,"BUITENHOF") ~ "Buitenhof",
+                             str_detect(publisher, "NOS Journaal") ~ "NOS Journaal",
+                             str_detect(publisher, "EENVANDAAG") ~ "EenVandaag",
+                             str_detect(publisher,"Op1") ~ "Op1",
+                             str_detect(publisher,"Khalid") ~ "Khalid & Sophie",
+                             str_detect(publisher,"NIEUWSUUR") ~ "Nieuwsuur",
+                             str_detect(publisher,"EenVandaag") ~ "Debat EenVandaag",
+                             str_detect(publisher,"Nederland Kiest") ~ "Debat NOS",
+                             str_detect(publisher,"WNL OP ZONDAG") ~ "WNL op Zondag",
+                             T ~ "Goedemorgen NL"))|>
+  filter(! publisher2 %in% c("Buitenhof","WNL op Zondag", "Debat EenVandaag", "Debat NOS"))
+  
+
+table(d4$publisher2)
+
+d4 = d |>
+  filter(! is.na(majority_speaker) & majority_speaker != "Edson Olf" & majority_speaker != "Wybren van Haga" )|>
   left_join(publishers)|>
   mutate(spreektijd=end-start)|>
   select(won, publisher2, majority_speaker, spreektijd)|>
   group_by(publisher2,majority_speaker)|>
   summarise(spreektijd=sum(spreektijd))|>
-  mutate(perc=spreektijd/sum(spreektijd)*100)|>
-  arrange(-perc) |> 
-  select(-perc) |>
-  pivot_wider(names_from=publisher2, values_from=spreektijd, values_fill = 0)
+  mutate(perc=spreektijd/sum(spreektijd)*100)
 
 
+table(d4$publisher2)
 
-d |> filter(won == "WON02439500", majority_speaker == "Henri Bontenbal") 
+ggplot(d4, aes(x=perc, y=reorder(majority_speaker,perc), fill=majority_speaker)) + geom_col()+
+  geom_text(data=filter(d4, perc > 4), aes(x=0, label=round(perc,1)),hjust=-.1)+
+  theme_classic() +theme(legend.position = "")+
+  xlab("Percentage")+
+  ylab("")+
+  facet_grid(~publisher2)
+
+
 
 
 d4=d|>

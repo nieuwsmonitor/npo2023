@@ -13,55 +13,82 @@ amcat4r::amcat_login("https://amcat4.labs.vu.nl/amcat")
 aandacht <- amcat4r::query_documents("tk2023_radio_tv",
                            fields = c('_id', 'publisher','date','text', 'speakernum','start','end','won'),
                            max_pages = Inf, scroll='5m')
-write_csv(aandacht, "results/tv_amcat.csv")
+write_csv(aandacht, "results/tv_amcat2.csv")
+
+tv = read_csv("results/tv_amcat2.csv")
+
+tv2 = tv|>
+  select(.id,publisher,won)
+
+write_csv(tv2,"results/tv_meta.csv")
 
 
-table(aandacht$publisher)
+table(tv2$publisher)
 
-nu = aandacht|>
-  mutate(date=as.Date(date))|>
-  filter(date=="2023-11-07" & publisher=="WNL GOEDEMORGEN NEDERLAND - Goedemorgen Nederland")
+head(tv)
+check=tv|>
+  distinct(publisher, won, .keep_all = T)|>
+  group_by(publisher, date)|>
+  summarise(n=n())
 
-head(op1)
-op1|>
-  group_by(.id)|>
-  summarise(embedding=do.call(embedding))
-
-
-data = aandacht|>
+table(check$date, check$publisher)
+tv3 = tv|>
   distinct(.id, .keep_all = T)|>
   mutate(text = tolower(text))
 
-head(data)
 
 googlesheets4::gs4_deauth()
 partijen <- read_sheet('https://docs.google.com/spreadsheets/d/1d3G1_y_HJP2Ik1v7rKrxeAXL4uCt5mLNgc8uC7vzQyI/edit#gid=0', sheet = 1)
 
-tokens = data |>unnest_tokens(word, text)
+partij= read_csv("results/party_queries.csv")
+tokens = tv3 |>unnest_tokens(word, text)
+
 head(tokens)
 
 hits = tokens |> 
-  dict_add(partijen, text_col = 'word', by_label='label', fill = 0) |>
+  dict_add(partij, text_col = 'word', by_label='label', fill = 0) |>
   as_tibble()
 
 colnames(hits)
 hits2 = hits|>
-  pivot_longer(`50Plus`:vvd)|>
-  group_by(publisher,name)|>
+  pivot_longer(BBB:Volt)|>
+  group_by(name)|>
   summarise(n=sum(value))|>
   mutate(perc=n/sum(n)*100)
+
+sum(hits2$n)
+library(ggthemes)
   
 head(hits2)
-ggplot(hits2, aes(x=perc, y=name, fill=name)) + geom_col()+
-  geom_text(aes(label=perc))
-  facet_grid(~publisher)
+ggplot(hits2, aes(x=perc, y=reorder(name,perc), fill=name)) + geom_col()+
+  geom_text(data=filter(hits2, perc > 0), aes(x=0, label=round(perc,1)),hjust=-0.5)+
+  theme_classic() +theme(legend.position = "")+
+  xlab("Percentage")+
+  ylab("")
 
-library(ggthemes)
-ggplot(hits2, aes(x=perc, y=reorder(name, perc), fill=name)) + geom_col()+
-  geom_text(aes(label=round(perc,1)),vjust=1,hjust=1)
+#####PER PROGRAMMA
 
-ggtheme
+hits2 = hits|>
+  mutate(publisher2 = case_when(str_detect(publisher, "BUITENHOF") ~ "Buitenhof",
+                                str_detect(publisher, "WNL") ~ "WNL",
+                                str_detect(publisher, "NOS") ~ "NOS",
+                                str_detect(publisher, "Op1") ~ "OP1",
+                                str_detect(publisher, "EENVANDAAG") ~ "EenVandaag",
+                                str_detect(publisher, "EenVandaag") ~ "EenVandaag",
+                                T ~ publisher))|>
+  pivot_longer(BBB:Volt)|>
+  group_by(publisher2, name)|>
+  summarise(n=sum(value))|>
+  mutate(perc=n/sum(n)*100)
 
+table(hits$publisher)
+head(hits2)
+ggplot(hits2, aes(x=perc, y=reorder(name,perc), fill=name)) + geom_col()+
+  geom_text(data=filter(hits2, perc > 4), aes(x=0, label=round(perc,1)),hjust=-.2)+
+  theme_classic() +theme(legend.position = "")+
+  xlab("Percentage")+
+  ylab("")+
+  facet_grid(~publisher2)
 
 
 ###### UPLOADEN HANDMATIG GECODEERDE SPREKERS #######

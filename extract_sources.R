@@ -13,7 +13,7 @@ as.id = function(x) {
 # Apply to actual texts
 
 amcat4r::amcat_login("https://amcat4.labs.vu.nl/amcat")
-docs = amcat4r::query_documents("npo_tk2023", fields=c("url", "title", "text"), max_pages = 0)
+docs = amcat4r::query_documents("npo_tk2023", fields=c("url", "title", "text"), max_pages = Inf)
 
 d = docs |> rename(doc_id=.id) |> mutate(text=str_c(title, text, sep="\n\n") |> replace_quotes())
 tokens = d |> udpipe('dutch') |> as_tibble() |> add_next_quotes()
