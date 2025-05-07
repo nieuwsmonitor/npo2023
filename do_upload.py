@@ -17,6 +17,7 @@ from pyannote.audio.pipelines.speaker_verification import PretrainedSpeakerEmbed
 import torch
 from jsonmeta import get_meta
 
+
 from pyannote.core import Segment
 
 FIELDS = {
@@ -38,7 +39,9 @@ class EmbeddingModel(NamedTuple):
 @cache
 def get_model() -> EmbeddingModel:
     audio = Audio(sample_rate=16000, mono="downmix")
-    embedding = PretrainedSpeakerEmbedding("speechbrain/spkrec-ecapa-voxceleb", device=torch.device("cuda"))
+    embedding = PretrainedSpeakerEmbedding(
+        "speechbrain/spkrec-ecapa-voxceleb", device=torch.device("cuda")
+    )
     embedding.to(torch.device("cuda"))
     return embedding, audio
 
@@ -81,11 +84,17 @@ def get_docs(job: UploadJob):
     with TemporaryDirectory() as tmpdir:
 
         wavfile = f"{tmpdir}/tmp.wav"
-        logging.info(f"[{current_process().pid}] Converting {job.videofile} to {wavfile}")
+        logging.info(
+            f"[{current_process().pid}] Converting {job.videofile} to {wavfile}"
+        )
         get_wav(job.videofile, wavfile)
-        logging.info(f"[{current_process().pid}] Reading segments from {job.segmentfile}")
+        logging.info(
+            f"[{current_process().pid}] Reading segments from {job.segmentfile}"
+        )
         segments = list(csv.DictReader(open(job.segmentfile)))
-        logging.info(f"[{current_process().pid}] Getting embeddings for {len(segments)} segments from {job.videofile}")
+        logging.info(
+            f"[{current_process().pid}] Getting embeddings for {len(segments)} segments from {job.videofile}"
+        )
         for i, row in enumerate(segments):
             if i and (not i % 10):
                 pct = i * 100 // len(segments)
@@ -106,7 +115,9 @@ def get_docs(job: UploadJob):
             if emb:
                 doc["embedding"] = emb
 
-            doc["title"] = f"{doc['publisher']} {doc['date']} segment {doc['start']} - {doc['end']}"
+            doc["title"] = (
+                f"{doc['publisher']} {doc['date']} segment {doc['start']} - {doc['end']}"
+            )
             yield doc
 
 
@@ -123,11 +134,19 @@ def worker(queue: "Queue[UploadJob]", server: str, index: str):
         job = queue.get(block=False)
         if job is None:
             break
-        logging.info(f"[{current_process().pid}] Processing {job.videofile} + {job.segmentfile}")
+        logging.info(
+            f"[{current_process().pid}] Processing {job.videofile} + {job.segmentfile}"
+        )
         do_upload(amcat, index, job)
 
 
-def get_todo(amcat: AmcatClient, index: str, metafolder: Path, videofolder: Path, segmentfolder: Path):
+def get_todo(
+    amcat: AmcatClient,
+    index: str,
+    metafolder: Path,
+    videofolder: Path,
+    segmentfolder: Path,
+):
     metadict = dict(get_meta(metafolder))
     existing_wons = {art.get("won") for art in amcat.query(index, fields=["won"])}
 
@@ -147,7 +166,10 @@ def get_todo(amcat: AmcatClient, index: str, metafolder: Path, videofolder: Path
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s",
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument("server")
     parser.add_argument("index")
@@ -156,23 +178,31 @@ if __name__ == "__main__":
     parser.add_argument("segmentfolder", type=Path)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--processes", type=int, default=8)
-    parser.add_argument("--delete", help="Delete the index before proceeding", action="store_true")
+    parser.add_argument(
+        "--delete", help="Delete the index before proceeding", action="store_true"
+    )
     args = parser.parse_args()
 
     amcat = AmcatClient(args.server)
     setup_amcat(amcat, args.index, args.delete)
 
     if args.check:
-        for f in get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder):
+        for f in get_todo(
+            amcat, args.index, args.metafolder, args.infolder, args.segmentfolder
+        ):
             print(f)
         sys.exit()
 
     q = Queue()
-    for i, f in enumerate(get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder)):
+    for i, f in enumerate(
+        get_todo(amcat, args.index, args.metafolder, args.infolder, args.segmentfolder)
+    ):
         q.put(f)
     nworkers = min(args.processes, q.qsize())
 
-    logging.info(f"[{current_process().pid}] {q.qsize()} files to do, spawning {nworkers} workers")
+    logging.info(
+        f"[{current_process().pid}] {q.qsize()} files to do, spawning {nworkers} workers"
+    )
     pool = Pool(nworkers, worker, (q, args.server, args.index))
     q.close()
     q.join_thread()
